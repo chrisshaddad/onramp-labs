@@ -1,0 +1,8 @@
+\echo ''
+\echo 'Which ONE index would you add for the top statement? Answer A, B, C or D in the chat.'
+\echo ''
+\echo '  A  CREATE INDEX ... ON orders (customer_id);'
+\echo '  B  CREATE INDEX ... ON orders (org_id, customer_id, created_at);'
+\echo '  C  CREATE INDEX ... ON orders (status);'
+\echo '  D  CREATE INDEX ... ON orders (org_id, status);'
+\echo ''
