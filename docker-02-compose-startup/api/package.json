@@ -1,0 +1,12 @@
+{
+  "name": "onramp-docker02-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "docker-02 demo app: connects to Postgres once at startup, with no retry",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  }
+}
