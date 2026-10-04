@@ -1,6 +1,6 @@
 # docker-01-naive-vs-optimized
 
-**Deck:** S03 - Containers and Docker, slide "Demo - Naive vs Optimized Image" (right after "Build Secrets"). The slide's table is filled in live: base image, image size, rebuild after a code edit, whoami.
+**Deck:** S03 - Containers and Docker, slide "Demo - Naive vs Optimized Image" (right after "Build Secrets"). The demo slide's table is measured live; the next slide, "Demo Results - Naive vs Optimized Image", shows the measured numbers.
 **Teaches:** instruction order decides what the build cache can reuse, and Docker decides by content, not timestamps. A slim base and a second stage shrink the image; `USER node` removes root.
 **Runs on:** the host's Docker CLI, in PowerShell or bash · **Demo time:** 12 minutes at most, including the timestamp step. The optional step 0 adds about 1 minute.
 
@@ -38,7 +38,7 @@ Open a terminal in onramp-labs/docker-01-naive-vs-optimized/app, and src/server.
 4  docker image ls onramp-api                          sizes for the table
    docker run --rm onramp-api:naive whoami             root
    docker run --rm onramp-api:optimized whoami         node
-5  Fill in the table on the slide.
+5  Read the sizes aloud, then show the Demo Results slide.
 ```
 
 - Fallback: open `recorded-run.md` in this folder and walk through it.
