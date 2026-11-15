@@ -1,0 +1,22 @@
+{
+  "name": "qa-01-ai-agents-find-a-bug",
+  "version": "1.0.0",
+  "description": "OnRamp S13 demo: Playwright AI agents find a planted tenant bug",
+  "scripts": {
+    "start": "node app/server.mjs",
+    "start:fixed": "node app/server.mjs --fixed",
+    "test": "playwright test --project=demo",
+    "test:reference": "playwright test --project=reference",
+    "receipt": "node scripts/receipt.mjs",
+    "reset": "node scripts/reset.mjs",
+    "verify": "node scripts/verify.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  }
+}

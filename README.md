@@ -4,16 +4,17 @@ Live demos for the OnRamp bootcamp. The instructor runs them over screen share, 
 
 One folder per lab, named topic first and numbered per topic (`db-01-...`, `docker-01-...`). Every lab has a README with a **Run sheet** (the same text as the slide's speaker notes), a reset command and a `verify.sh` that writes `recorded-run.md`.
 
-The database labs run inside containers with `docker exec`. The Docker labs run the Docker CLI on the host, and their reset and verify scripts run in a `docker:29-cli` container. The EDA lab has its own compose file (Kafka, Postgres and a Node container) and runs inside it with `docker exec`. All of them need only Docker Desktop and git.
+The database labs run inside containers with `docker exec`. The Docker labs run the Docker CLI on the host, and their reset and verify scripts run in a `docker:29-cli` container. The EDA lab has its own compose file (Kafka, Postgres and a Node container) and runs inside it with `docker exec`. These need only Docker Desktop and git. The QA lab is the exception: it runs on the host, where Claude Code drives Chrome through Playwright's test agents.
 
 ## Prerequisites
 
 - Docker Desktop (WSL 2 backend on Windows) or Docker Engine with Compose v2
 - git
 - About 9 GB of free disk: 5 GB for the database labs, about 3 GB more for the Docker labs (mostly `node:24` and the build cache), and about 1 GB for the EDA lab (the Kafka image and the app image)
+- For qa-01 only: Node 20 or later, Google Chrome and Claude Code
 - A terminal at least 160 columns wide, because EXPLAIN output is wide. On Windows, use PowerShell or Windows Terminal, not Git Bash: Git Bash needs `winpty` for `docker exec -it`, and it rewrites the `/var/run/docker.sock` and `/lab` paths in the Docker labs' commands.
 
-Nothing else is needed on the host, and every command is the same in PowerShell and bash.
+Apart from qa-01, nothing else is needed on the host, and every command is the same in PowerShell and bash.
 
 ## Start
 
@@ -40,8 +41,9 @@ Before a session, run the reset command of each lab you'll show. It takes about 
 | [docker-01-naive-vs-optimized](docker-01-naive-vs-optimized/) | Instruction order, multi-stage builds, slim base and non-root, measured | Containers and Docker - Demo - Naive vs Optimized Image | `docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "${PWD}:/lab" -w /lab docker:29-cli sh docker-01-naive-vs-optimized/scripts/reset.sh` |
 | [docker-02-compose-startup](docker-02-compose-startup/) | Short-form depends_on races Postgres on a fresh volume; a healthcheck fixes it | Containers and Docker - Quick Check - Works on the Second Try | `docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "${PWD}:/lab" -w /lab docker:29-cli sh docker-02-compose-startup/scripts/reset.sh` |
 | [eda-01-duplicates-ordering](eda-01-duplicates-ordering/) | Duplicates and out-of-order events, live | Event-Driven Architecture - Demo - A duplicate, live; Demo - Out of order, live | `docker exec onramp-eda-app demo reset` |
+| [qa-01-ai-agents-find-a-bug](qa-01-ai-agents-find-a-bug/) | Playwright's AI agents find a planted tenant bug, with a captioned video receipt | Quality Engineering - Demo - AI agents find the bug | `npm run reset` (from the lab folder) |
 
-The database and EDA resets run from anywhere (container `onramp-eda-app` for eda-01). The Docker resets mount the repo, so run them from the repo root.
+The database and EDA resets run from anywhere (container `onramp-eda-app` for eda-01). qa-01 has a one-time setup (`npm ci`, `npx playwright install ffmpeg`): see its README. The Docker resets mount the repo, so run them from the repo root.
 
 ## Stop and clean up
 
