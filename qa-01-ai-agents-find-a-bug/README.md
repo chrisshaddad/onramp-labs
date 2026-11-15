@@ -77,4 +77,9 @@ If the live run drifts or runs long:
 
 ## Verified
 
-Playwright 1.65.1 with Chrome for Testing 153, Node 22, on Linux (cloud sandbox), November 15, 2026: `npm run verify` 4/4 PASS. Reference tests on the buggy app: 2 passed, 1 failed in 3.2 s; on the fixed app: 3/3 in 2.8 s. Receipt: 19.1 s video, 1280x720, 1.6 MB. The live agent steps (3 to 7) need Claude Code and were not run here.
+November 15, 2026, Playwright 1.65.1, `npm run verify` 4/4 PASS on both machines:
+
+- Windows 11 (instructor laptop), Node 24, Google Chrome: buggy app 2 passed, 1 failed in 3.2 s; fixed app 3/3 in 2.9 s; receipt 1.7 MB, recorded in 18.8 s. Details in `recorded-run.md`.
+- Linux (cloud sandbox), Node 22, Chrome for Testing 153: buggy app 2 passed, 1 failed in 3.2 s; fixed app 3/3 in 2.8 s; receipt 19.1 s video, 1280x720, 1.6 MB.
+
+The live agent steps (3 to 7) need Claude Code and are not part of `npm run verify`.
