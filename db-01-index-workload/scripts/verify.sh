@@ -28,8 +28,11 @@ out=$(step "Reset (before the session)" bash "$LAB/scripts/reset.sh")
 grep -q "db-01 ready" <<<"$out" && pass "reset.sh" || fail "reset.sh: $out"
 
 out=$(sqlstep "1. Top statements" 01-top-statements.sql)
-top=$(psql -X -Atc "SELECT query FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 1")
-[[ "$top" == "SELECT order_id, created_at, total FROM orders WHERE org_id"* ]] && pass "top statement is customer history" || fail "top statement is: $top"
+page_of="substring(query from '/\\* page: ([^*]*) \\*/')"
+pages=$(psql -X -Atc "SELECT string_agg(DISTINCT $page_of, ', ' ORDER BY $page_of) FROM pg_stat_statements")
+[[ "$pages" == "customer, dashboard, every page, finance export, login, orders" ]] && pass "every workload query carries its page tag" || fail "page tags found: $pages"
+top=$(psql -X -Atc "SELECT $page_of FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 1")
+[[ "$top" == "customer" ]] && pass "top statement is the customer page" || fail "top statement is: $top"
 
 out=$(sqlstep "2. EXPLAIN the top statement" 02-explain-top.sql)
 grep -q "Seq Scan on orders" <<<"$out" && pass "plan before: Seq Scan" || fail "plan before has no Seq Scan"
@@ -56,8 +59,8 @@ fi
 
 step "8. Re-run the workload (optional)" bash "$LAB/scripts/workload.sh" >/dev/null
 out=$(sqlstep "8. Top statements again" 01-top-statements.sql)
-top=$(psql -X -Atc "SELECT query FROM pg_stat_statements WHERE query NOT ILIKE '%pg_stat_statements%' ORDER BY total_exec_time DESC LIMIT 1")
-[[ "$top" == "SELECT count(*) FROM orders"* ]] && pass "bottleneck moved to the open-orders count" || warn "top statement after the fix: $top"
+top=$(psql -X -Atc "SELECT $page_of FROM pg_stat_statements WHERE query NOT ILIKE '%pg_stat_statements%' ORDER BY total_exec_time DESC LIMIT 1")
+[[ "$top" == "dashboard" ]] && pass "bottleneck moved to the dashboard's open-orders count" || warn "top statement after the fix: $top"
 
 bash "$LAB/scripts/reset.sh" >/dev/null 2>&1
 n=$(psql -X -Atc "SELECT count(*) FROM pg_index WHERE indrelid = 'orders'::regclass")

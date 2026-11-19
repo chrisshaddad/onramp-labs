@@ -16,31 +16,38 @@ The slide's speaker notes use the same text.
 
 - Before the session: `docker exec onramp-db bash /labs/db-01-index-workload/scripts/reset.sh` (about 1 minute; it also warms the cache).
 - Open: `docker exec -it onramp-db psql`, then `\cd /labs/db-01-index-workload/steps`
-- 1: `\i 01-top-statements.sql`. Pause: "Which statement costs the most?" Expect customer history on top by total_ms (about 150 ms avg). The finance report is slowest per call (about 3 s) but runs rarely.
+- 1: `\i 01-top-statements.sql`. Pause: "Which statement costs the most?" The page column names the page that sent each query (see [Query tags](#query-tags)). Expect the customer page on top by total_ms. The finance export is slowest per call but runs rarely.
 - 2: `\i 02-explain-top.sql`. Pause: "What is the plan telling you?" Expect Seq Scan on orders, Rows Removed by Filter about 2M, estimated rows=4 vs actual 8.
-- 3: `\i 03-insert-batch.sql`. Note the INSERT time, about 0.5 to 0.8 s: the baseline.
+- 3: `\i 03-insert-batch.sql`. Note the INSERT time, about 0.35 to 0.7 s: the baseline.
 - 4: `\i 04-choose-index.sql`. Pause: the group votes A, B, C or D in the chat. Create the majority pick.
-- 5: `\i 05b-index-org-customer-created.sql`, or 05a, 05c or 05d for the other options. About 3 to 4 s.
+- 5: `\i 05b-index-org-customer-created.sql`, or 05a, 05c or 05d for the other options. About 2 to 4 s.
 - 6: `\i 02-explain-top.sql`. With B: Index Scan Backward, no Sort, under 1 ms.
-- 7: `\i 03-insert-batch.sql`. With B roughly 1.5 to 2x the baseline, with A or C about 1.4x.
-- 8, if time: `\! bash /labs/db-01-index-workload/scripts/workload.sh`, then `\i 01-top-statements.sql`. About 3x the transactions, and the open-orders count is now on top: the bottleneck moves.
+- 7: `\i 03-insert-batch.sql`. With B about 1.5 to 2x the baseline, with A or C about 1.4x.
+- 8, if time: `\! bash /labs/db-01-index-workload/scripts/workload.sh`, then `\i 01-top-statements.sql`. About 3 to 4x the transactions, and the dashboard's open-orders count is now on top: the bottleneck moves.
 - Fallback: open `recorded-run.md` in this folder and walk through it.
 - About 12 minutes, including the poll. Run the reset command again afterwards.
 
 ## Expected output
 
-Measured on Postgres 18.6 in Docker (2 vCPUs, 128 MB shared_buffers). Your laptop's numbers will differ, so compare the shape, not the exact values. `recorded-run.md` has a full run.
+Measured on Postgres 18.6 in Docker (128 MB shared_buffers). Speed varies a lot between machines and runs, so compare the shape, not the exact values. `recorded-run.md` has a full run.
 
 | Step | What you see |
 |---|---|
-| 1 | customer history: about 370 calls, about 56 s total, about 150 ms avg. Open-orders count: about 90 calls, about 175 ms avg. Finance report: 3 calls at about 2.6 s each. The users-by-id lookup has the most calls and costs almost nothing. |
-| 2 | `Seq Scan on orders`, `Rows Removed by Filter: 1999992`, `rows=4` estimated vs `rows=8.00` actual, about 160 to 200 ms. |
-| 2b (optional) | Small tenant: `Bitmap Heap Scan` on `idx_orders_org_created`, about 5,900 rows removed, about 20 ms. |
-| 3 | `INSERT 0 100000`, about 0.5 to 0.8 s. |
-| 5 | `CREATE INDEX` in about 3 to 4 s. Index B is about 77 MB. |
-| 6 | B: `Index Scan Backward using idx_orders_org_customer_created`, no Sort, about 0.1 to 0.3 ms. A: Bitmap Heap Scan on `idx_orders_customer` plus a small Sort, about 0.15 ms. C and D: still `Seq Scan`. |
-| 7 | Measured (warm cache): baseline 0.53 s; A 0.77 s; B 1.15 s; C 0.75 s; D 0.94 s. |
-| 8 | About 3,300 transactions instead of about 1,150 in the same 20 s. Customer history drops to about 0.1 ms avg; the open-orders count (about 175 ms avg) is the new top statement. |
+| 1 | A `page` column first. `customer` is on top with about 55 to 60 s total: fewer, slower calls on a slow run (about 350 at 160 ms), more, faster ones on a fast run (about 900 at 65 ms). `dashboard` (the open-orders count) is second. `finance export` is slowest per call (0.6 to 3.4 s) but runs only 3 to 7 times. `every page` (the user lookup) has the most calls and costs almost nothing. |
+| 2 | `Seq Scan on orders`, `Rows Removed by Filter: 1999992`, `rows=4` estimated vs `rows=8.00` actual, about 100 to 220 ms. Buffers hit plus read add up to about 18,800. |
+| 2b (optional) | Small tenant: `Bitmap Heap Scan` on `idx_orders_org_created`, about 5,900 rows removed, about 15 to 30 ms. |
+| 3 | `INSERT 0 100000`, about 0.35 to 0.7 s. |
+| 5 | `CREATE INDEX` in about 2 to 4 s. Index B is about 77 MB. |
+| 6 | B: `Index Scan Backward using idx_orders_org_customer_created`, no Sort, about 0.1 ms, Buffers about 14. A: Bitmap Heap Scan on `idx_orders_customer` plus a small Sort, about 0.15 ms. C and D: still `Seq Scan`. |
+| 7 | B: about 1.5 to 2x the baseline (latest run 0.35 s to 0.55 s). All four options in one earlier run (warm cache): baseline 0.53 s; A 0.77 s; B 1.15 s; C 0.75 s; D 0.94 s. |
+| 8 | About 3 to 4x the transactions of the reset run in the same 20 s (latest run 11,345 vs 2,934). `customer` drops to about 0.03 ms avg; `dashboard`, the open-orders count, is the new top statement. |
+
+## Query tags
+
+Every workload query ends with a comment like `/* page: customer */`, and step 1 reads it back as the page column. ORMs and tracing tools (Rails query log tags, sqlcommenter) tag queries the same way, so a slow statement leads straight to the route that sent it.
+
+- Postgres ignores comments when it groups statements, so the same SQL sent from two pages is one row, and pg_stat_statements keeps the text (and tag) of the first one it saw. That's why the shared user lookup is tagged `every page`.
+- Put the tag at the end. Since Postgres 18 the stored text starts at the statement's first keyword, so a comment before it is dropped.
 
 ## If the group picks C (status)
 
@@ -59,7 +66,7 @@ This runs the whole lab without pauses, prints PASS/WARN/FAIL per check, and end
 
 | Path | What it is |
 |---|---|
-| `workload/*.sql` | pgbench scripts, one per "endpoint" (customer history, order list, login, open-orders count, finance report) |
+| `workload/*.sql` | pgbench scripts, one per page (customer, orders, login, dashboard, finance export), each query tagged with `/* page: ... */` |
 | `scripts/workload.sh` | Resets statement statistics, then runs 20 s of traffic with 4 clients |
 | `scripts/reset.sh` | The one reset command |
 | `scripts/drop-lab-indexes.sql` | Drops every index on orders except the two baseline ones |
