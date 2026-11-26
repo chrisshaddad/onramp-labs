@@ -28,6 +28,7 @@ out=$(step "Reset (before the session)" bash "$LAB/scripts/reset.sh")
 grep -q "db-01 ready" <<<"$out" && pass "reset.sh" || fail "reset.sh: $out"
 
 out=$(sqlstep "1. Top statements" 01-top-statements.sql)
+grep -q 'customer_id = \$2' <<<"$out" && pass "step 1 shows the top statement in full" || fail "step 1 cuts the top statement's text"
 page_of="substring(query from '/\\* page: ([^*]*) \\*/')"
 pages=$(psql -X -Atc "SELECT string_agg(DISTINCT $page_of, ', ' ORDER BY $page_of) FROM pg_stat_statements")
 [[ "$pages" == "customer, dashboard, every page, finance export, login, orders" ]] && pass "every workload query carries its page tag" || fail "page tags found: $pages"

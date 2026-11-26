@@ -33,7 +33,7 @@ Measured on Postgres 18.6 in Docker (128 MB shared_buffers). Speed varies a lot 
 
 | Step | What you see |
 |---|---|
-| 1 | A `page` column first. `customer` is on top with about 55 to 60 s total: fewer, slower calls on a slow run (about 350 at 160 ms), more, faster ones on a fast run (about 900 at 65 ms). `dashboard` (the open-orders count) is second. `finance export` is slowest per call (0.6 to 3.4 s) but runs only 3 to 7 times. `every page` (the user lookup) has the most calls and costs almost nothing. |
+| 1 | A `page` column first, and the `query` column shows each statement in full: long ones run over several lines, and a `+` at the end of a line means the statement continues. `customer` is on top with about 55 to 60 s total: fewer, slower calls on a slow run (about 350 at 160 ms), more, faster ones on a fast run (about 900 at 65 ms). `dashboard` (the open-orders count) is second. `finance export` is slowest per call (0.6 to 3.4 s) but runs only 3 to 7 times. `every page` (the user lookup) has the most calls and costs almost nothing. |
 | 2 | `Seq Scan on orders`, `Rows Removed by Filter: 1999992`, `rows=4` estimated vs `rows=8.00` actual, about 100 to 220 ms. Buffers hit plus read add up to about 18,800. |
 | 2b (optional) | Small tenant: `Bitmap Heap Scan` on `idx_orders_org_created`, about 5,900 rows removed, about 15 to 30 ms. |
 | 3 | `INSERT 0 100000`, about 0.35 to 0.7 s. |
@@ -48,6 +48,7 @@ Every workload query ends with a comment like `/* page: customer */`, and step 1
 
 - Postgres ignores comments when it groups statements, so the same SQL sent from two pages is one row, and pg_stat_statements keeps the text (and tag) of the first one it saw. That's why the shared user lookup is tagged `every page`.
 - Put the tag at the end. Since Postgres 18 the stored text starts at the statement's first keyword, so a comment before it is dropped.
+- Step 1 takes the tag out of the query column with `regexp_replace`, because the page column already shows it. Nothing else is trimmed.
 
 ## If the group picks C (status)
 
@@ -66,7 +67,7 @@ This runs the whole lab without pauses, prints PASS/WARN/FAIL per check, and end
 
 | Path | What it is |
 |---|---|
-| `workload/*.sql` | pgbench scripts, one per page (customer, orders, login, dashboard, finance export), each query tagged with `/* page: ... */` |
+| `workload/*.sql` | pgbench scripts, one per page (customer, orders, login, dashboard, finance export), each query tagged with `/* page: ... */`. Long queries are written over several lines, and step 1 shows them exactly as written |
 | `scripts/workload.sh` | Resets statement statistics, then runs 20 s of traffic with 4 clients |
 | `scripts/reset.sh` | The one reset command |
 | `scripts/drop-lab-indexes.sql` | Drops every index on orders except the two baseline ones |
@@ -77,4 +78,5 @@ This runs the whole lab without pauses, prints PASS/WARN/FAIL per check, and end
 
 - **Output wraps badly:** widen the terminal to at least 160 columns, or lower the font size.
 - **`CREATE INDEX CONCURRENTLY` failed halfway:** it leaves an INVALID index. The reset drops it.
+- **Step 1 shows a long statement on one line:** the statistics are older than the workload files, and pg_stat_statements keeps the first text it saw. Run the reset.
 - **Step 1 shows no workload statements:** run the reset, or `\! bash /labs/db-01-index-workload/scripts/workload.sh`.
